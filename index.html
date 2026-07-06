@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>쉽디 (Easy Design Thinking)</title>
-    
+
+    <!-- 파비콘: 🛠️ (4단계 '뚝딱뚝딱 만들기'와 동일한 이모지로 통일) -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9B%A0%EF%B8%8F%3C/text%3E%3C/svg%3E">
+
     <!-- 폰트: Pretendard -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     
@@ -102,9 +105,10 @@
     <header class="bg-white shadow-sm sticky top-0 z-40">
         <div class="max-w-4xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-3">
             <div class="flex justify-between items-center w-full sm:w-auto">
-                <h1 class="text-xl sm:text-2xl font-bold text-blue-500 flex items-center gap-2">
-                    <span class="material-symbols-rounded text-2xl sm:text-3xl">lightbulb</span>
-                    <span data-i18n="app_title">쉽디</span> <span class="text-xs sm:text-sm font-medium text-gray-400">Easy Design Thinking</span>
+                <h1 class="text-xl sm:text-2xl font-bold text-blue-500 flex items-center gap-2 min-w-0">
+                    <span class="material-symbols-rounded text-2xl sm:text-3xl flex-shrink-0">lightbulb</span>
+                    <span data-i18n="app_title" class="whitespace-nowrap">쉽디</span>
+                    <span id="appSubtitle" class="text-xs sm:text-sm font-medium text-gray-400 whitespace-nowrap truncate">Easy Design Thinking</span>
                 </h1>
                 <!-- 모바일용 언어 전환 버튼 -->
                 <button onclick="toggleLanguage()" class="sm:hidden text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-full font-bold text-gray-700 transition-colors" id="langBtnMobile">EN</button>
@@ -312,7 +316,7 @@
                 <div class="text-center mb-8 border-b-2 border-dashed border-gray-200 pb-6">
                     <div class="text-4xl mb-2">🏆</div>
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-1" data-i18n="report_title">디자인 씽킹 리포트</h1>
-                    <p class="text-gray-400 text-sm"><span data-i18n="app_title">쉽디</span> (Easy Design Thinking) · <span id="r-date"></span></p>
+                    <p class="text-gray-400 text-sm"><span data-i18n="app_title">쉽디</span> <span id="reportSubtitle">(Easy Design Thinking) </span>· <span id="r-date"></span></p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
@@ -456,7 +460,7 @@
                 alert_reset: "지금까지 작성한 모든 내용이 지워집니다. 새로 시작할까요?", alert_clear: "그림을 모두 지울까요?"
             },
             en: {
-                app_title: "Easy D", tab_1: "Empathize", tab_2: "Define", tab_3: "Ideate", tab_4: "Prototype", tab_5: "Test", tab_6: "Report",
+                app_title: "EasyD", tab_1: "Empathize", tab_2: "Define", tab_3: "Ideate", tab_4: "Prototype", tab_5: "Test", tab_6: "Report",
                 step1_title: "Step 1: Empathize", step1_desc: "Tell a story about someone who needs help, like a character in a fairy tale.",
                 s1_q1: "Who is facing a difficulty?", s1_p1: "Ex: My classmates, stray cats, my grandma",
                 s1_q2: "In what situation are they struggling?", s1_p2: "Ex: It's hard to take things out of a bag while holding an umbrella in the rain.",
@@ -526,6 +530,9 @@
             });
             document.getElementById('langBtnPC').innerText = lang === 'ko' ? 'English' : '한국어';
             document.getElementById('langBtnMobile').innerText = lang === 'ko' ? 'EN' : 'KO';
+            // 영어 모드에서는 앱 이름(EasyD)과 부제가 같은 뜻을 반복하므로 부제를 숨김
+            document.getElementById('appSubtitle').classList.toggle('hide', lang === 'en');
+            document.getElementById('reportSubtitle').classList.toggle('hide', lang === 'en');
             renderEmotions();
             renderStep();
         }
