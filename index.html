@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>쉽디 (Easy Design Thinking)</title>
+    
+    <!-- 폰트: Pretendard -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    
+    <!-- 아이콘: Material Symbols Rounded -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Pretendard', 'sans-serif'] },
+                    colors: {
+                        pastel: {
+                            blue: '#D0E8FF', green: '#D4F0D4', pink: '#FFD1DC',
+                            yellow: '#FFF5BA', purple: '#E6D7FF', gray: '#F8F9FA'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #F8F9FA; color: #333; overscroll-behavior: none; }
+        .post-it { box-shadow: 2px 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s; }
+        .post-it:hover { transform: translateY(-2px) rotate(1deg); }
+        .hide { display: none !important; }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #bbb; }
+        
+        #protoCanvas { touch-action: none; cursor: crosshair; }
+        
+        /* 캔버스 텍스트 입력용 절대 좌표 Input */
+        #canvasTextInput {
+            position: absolute;
+            background: transparent;
+            border: 2px dashed #4b5563;
+            outline: none;
+            padding: 2px;
+            font-family: 'Pretendard', sans-serif;
+            font-size: 20px;
+            color: #000;
+            z-index: 10;
+        }
+
+        .tool-active { background-color: #3B82F6; color: white; border-color: #3B82F6; }
+        .tool-inactive { background-color: #F3F4F6; color: #374151; border-color: #D1D5DB; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header & Progress Bar -->
+    <header class="bg-white shadow-sm sticky top-0 z-40">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex justify-between items-center w-full sm:w-auto">
+                <h1 class="text-xl sm:text-2xl font-bold text-blue-500 flex items-center gap-2">
+                    <span class="material-symbols-rounded text-2xl sm:text-3xl">lightbulb</span>
+                    <span data-i18n="app_title">쉽디</span> <span class="text-xs sm:text-sm font-medium text-gray-400">Easy Design Thinking</span>
+                </h1>
+                <!-- 모바일용 언어 전환 버튼 -->
+                <button onclick="toggleLanguage()" class="sm:hidden text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-full font-bold text-gray-700 transition-colors" id="langBtnMobile">EN</button>
+            </div>
+            
+            <div class="flex items-center gap-2 w-full sm:w-auto overflow-hidden">
+                <div class="flex gap-2 text-sm sm:text-base overflow-x-auto w-full pb-2 sm:pb-0 hide-scrollbar" id="progressTabs">
+                    <!-- 탭 메뉴는 JS로 렌더링됨 -->
+                </div>
+                <!-- PC용 언어 전환 버튼 -->
+                <button onclick="toggleLanguage()" class="hidden sm:block text-sm bg-gray-200 hover:bg-gray-300 px-4 py-1.5 rounded-full font-bold text-gray-700 transition-colors flex-shrink-0" id="langBtnPC">English</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-4xl mx-auto w-full p-4 sm:p-6">
+        
+        <!-- 1단계: 공감 -->
+        <section id="step1" class="step-section hide bg-white rounded-3xl p-5 sm:p-8 shadow-md border-t-8 border-pastel-pink">
+            <h2 class="text-xl sm:text-2xl font-bold mb-2 flex items-center gap-2">
+                <span class="text-2xl sm:text-3xl">💖</span> <span data-i18n="step1_title">1단계: 마음으로 공감하기</span>
+            </h2>
+            <p class="text-gray-600 mb-6 text-sm sm:text-base" data-i18n="step1_desc">마치 동화책의 주인공처럼, 도움이 필요한 친구의 이야기를 들려주세요.</p>
+            
+            <div class="space-y-6">
+                <div>
+                    <label class="block font-bold text-base sm:text-lg mb-2" data-i18n="s1_q1">누가 어려움을 겪고 있나요?</label>
+                    <input type="text" id="s1-who" class="w-full p-4 rounded-xl bg-pastel-gray border-2 border-transparent focus:border-pastel-pink outline-none transition-all text-sm sm:text-base" data-i18n-ph="s1_p1">
+                </div>
+                <div>
+                    <label class="block font-bold text-base sm:text-lg mb-2" data-i18n="s1_q2">어떤 상황에서 어떤 어려움이 있나요?</label>
+                    <textarea id="s1-situation" rows="3" class="w-full p-4 rounded-xl bg-pastel-gray border-2 border-transparent focus:border-pastel-pink outline-none transition-all text-sm sm:text-base" data-i18n-ph="s1_p2"></textarea>
+                </div>
+                <div>
+                    <label class="block font-bold text-base sm:text-lg mb-2" data-i18n="s1_q3">주인공의 기분은 어떨까요?</label>
+                    <div class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3" id="emotion-container">
+                        <!-- JS에서 24개 감정이 렌더링됩니다 -->
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 flex justify-end">
+                <button onclick="nextStep()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-transform hover:-translate-y-1 w-full sm:w-auto" data-i18n="btn_next">다음 단계로 🚀</button>
+            </div>
+        </section>
+
+        <!-- 2단계: 문제 정의 -->
+        <section id="step2" class="step-section hide bg-white rounded-3xl p-5 sm:p-8 shadow-md border-t-8 border-pastel-yellow">
+            <h2 class="text-xl sm:text-2xl font-bold mb-2 flex items-center gap-2">
+                <span class="text-2xl sm:text-3xl">🔍</span> <span data-i18n="step2_title">2단계: 진짜 문제 찾기</span>
+            </h2>
+            <p class="text-gray-600 mb-6 text-sm sm:text-base" data-i18n="step2_desc">해결해야 할 문제를 한 문장으로 멋지게 만들어봐요!</p>
+
+            <div class="bg-pastel-yellow bg-opacity-30 p-5 sm:p-8 rounded-2xl border border-yellow-200">
+                <p class="text-lg sm:text-xl font-bold mb-4 text-center" data-i18n="s2_hmw_1">"우리가 어떻게 하면..."</p>
+                
+                <div class="flex flex-col md:flex-row items-center gap-3 sm:gap-4 mb-4">
+                    <input type="text" id="s2-who" class="w-full md:w-1/3 p-3 sm:p-4 rounded-xl border-2 border-yellow-300 text-center font-bold text-base sm:text-lg" data-i18n-ph="s2_p1">
+                    <span class="font-bold text-lg sm:text-xl whitespace-nowrap" data-i18n="s2_hmw_2">가(이)</span>
+                    <input type="text" id="s2-goal" class="w-full md:w-2/3 p-3 sm:p-4 rounded-xl border-2 border-yellow-300 text-center font-bold text-base sm:text-lg" data-i18n-ph="s2_p2">
+                </div>
+                
+                <p class="text-lg sm:text-xl font-bold text-center" data-i18n="s2_hmw_3">도울 수 있을까?"</p>
+            </div>
+            <p class="text-center text-gray-500 text-xs sm:text-sm mt-4" data-i18n="s2_notice">* 1단계에서 적은 내용이 자동으로 불러와졌어요. 수정해도 좋아요!</p>
+
+            <div class="mt-8 flex justify-between gap-4">
+                <button onclick="prevStep()" class="text-gray-500 hover:text-gray-700 font-bold py-3 px-6 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors w-1/3 sm:w-auto" data-i18n="btn_prev">이전</button>
+                <button onclick="nextStep()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-transform hover:-translate-y-1 w-2/3 sm:w-auto" data-i18n="btn_next">다음 단계로 🚀</button>
+            </div>
+        </section>
+
+        <!-- 3단계: 아이디어 도출 -->
+        <section id="step3" class="step-section hide bg-white rounded-3xl p-5 sm:p-8 shadow-md border-t-8 border-pastel-green">
+            <h2 class="text-xl sm:text-2xl font-bold mb-2 flex items-center gap-2">
+                <span class="text-2xl sm:text-3xl">💡</span> <span data-i18n="step3_title">3단계: 아이디어 팡팡!</span>
+            </h2>
+            <p class="text-gray-600 mb-6 text-sm sm:text-base" data-i18n="step3_desc">엉뚱해도 괜찮아요! 포스트잇에 아이디어를 마음껏 붙여보세요.</p>
+
+            <div class="flex flex-col sm:flex-row gap-3 mb-6">
+                <input type="text" id="s3-input" class="flex-grow p-4 rounded-xl bg-gray-100 border-2 border-transparent focus:border-pastel-green outline-none text-sm sm:text-base" data-i18n-ph="s3_input" onkeypress="if(event.key==='Enter') addIdea()">
+                <div class="flex gap-2">
+                    <button onclick="addIdea()" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 sm:py-4 px-4 sm:px-6 rounded-xl shadow-md whitespace-nowrap text-sm sm:text-base" data-i18n="btn_add_idea">붙이기 📝</button>
+                    <button onclick="showScamperHint()" class="flex-1 bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-bold py-3 sm:py-4 px-4 sm:px-6 rounded-xl shadow-md whitespace-nowrap flex justify-center items-center gap-1 text-sm sm:text-base">
+                        <span class="material-symbols-rounded text-lg sm:text-xl">help</span> <span data-i18n="btn_hint">힌트</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="idea-board" class="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 min-h-[200px] p-4 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
+                <!-- 포스트잇 렌더링 영역 -->
+            </div>
+
+            <div class="mt-8 flex justify-between gap-4">
+                <button onclick="prevStep()" class="text-gray-500 hover:text-gray-700 font-bold py-3 px-6 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors w-1/3 sm:w-auto" data-i18n="btn_prev">이전</button>
+                <button onclick="nextStep()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-transform hover:-translate-y-1 w-2/3 sm:w-auto" data-i18n="btn_next">다음 단계로 🚀</button>
+            </div>
+        </section>
+
+        <!-- 4단계: 프로토타입 -->
+        <section id="step4" class="step-section hide bg-white rounded-3xl p-5 sm:p-8 shadow-md border-t-8 border-pastel-blue">
+            <h2 class="text-xl sm:text-2xl font-bold mb-2 flex items-center gap-2">
+                <span class="text-2xl sm:text-3xl">🛠️</span> <span data-i18n="step4_title">4단계: 뚝딱뚝딱 만들기</span>
+            </h2>
+            <p class="text-gray-600 mb-6 text-sm sm:text-base" data-i18n="step4_desc">가장 좋은 아이디어를 골라 눈에 보이게 만들어봐요!</p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- 향상된 캔버스 영역 -->
+                <div class="flex flex-col">
+                    <label class="font-bold text-lg mb-3 flex justify-between items-end">
+                        <span data-i18n="s4_sketch">🎨 아이디어 스케치</span>
+                        <button onclick="clearCanvas()" class="text-xs sm:text-sm bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1 rounded-full transition-colors flex items-center gap-1">
+                            <span class="material-symbols-rounded text-sm">delete</span> <span data-i18n="btn_clear">전체 지우기</span>
+                        </button>
+                    </label>
+                    
+                    <!-- 그림판 툴바 -->
+                    <div class="flex flex-wrap gap-2 mb-2 p-2 bg-gray-50 rounded-xl border border-gray-200">
+                        <button onclick="setTool('pen')" id="tool-pen" class="tool-btn tool-active p-2 rounded-lg flex items-center gap-1 text-sm border-2 transition-colors">
+                            <span class="material-symbols-rounded text-lg">edit</span> <span class="hidden sm:inline" data-i18n="tool_pen">펜</span>
+                        </button>
+                        <button onclick="setTool('eraser')" id="tool-eraser" class="tool-btn tool-inactive p-2 rounded-lg flex items-center gap-1 text-sm border-2 transition-colors">
+                            <span class="material-symbols-rounded text-lg">ink_eraser</span> <span class="hidden sm:inline" data-i18n="tool_eraser">지우개</span>
+                        </button>
+                        <button onclick="setTool('text')" id="tool-text" class="tool-btn tool-inactive p-2 rounded-lg flex items-center gap-1 text-sm border-2 transition-colors">
+                            <span class="material-symbols-rounded text-lg">text_fields</span> <span class="hidden sm:inline" data-i18n="tool_text">텍스트</span>
+                        </button>
+                        
+                        <div class="w-px h-8 bg-gray-300 mx-1 self-center"></div>
+                        
+                        <input type="color" id="brushColor" value="#000000" class="w-8 h-8 sm:w-10 sm:h-10 rounded cursor-pointer self-center border-none p-0 bg-transparent" onchange="updateBrush()">
+                        
+                        <div class="flex items-center gap-2 ml-auto">
+                            <span class="material-symbols-rounded text-gray-400 text-sm">line_weight</span>
+                            <input type="range" id="brushSize" min="1" max="20" value="3" class="w-16 sm:w-24 accent-blue-500" onchange="updateBrush()">
+                        </div>
+                    </div>
+
+                    <div class="relative border-2 border-gray-300 rounded-xl overflow-hidden bg-white w-full" id="canvasContainer">
+                        <canvas id="protoCanvas" class="w-full h-[300px] sm:h-[400px] bg-white"></canvas>
+                        <input type="text" id="canvasTextInput" class="hide" placeholder="텍스트 입력 후 엔터">
+                    </div>
+                </div>
+
+                <!-- 레시피 영역 -->
+                <div class="flex flex-col">
+                    <label class="font-bold text-lg mb-3" data-i18n="s4_recipe">📋 만들기 레시피</label>
+                    <textarea id="s4-recipe" class="flex-grow p-4 rounded-xl bg-pastel-blue bg-opacity-30 border-2 border-blue-200 outline-none resize-none text-sm sm:text-base min-h-[200px]" data-i18n-ph="s4_recipe_ph"></textarea>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-between gap-4">
+                <button onclick="prevStep()" class="text-gray-500 hover:text-gray-700 font-bold py-3 px-6 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors w-1/3 sm:w-auto" data-i18n="btn_prev">이전</button>
+                <button onclick="nextStep()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-transform hover:-translate-y-1 w-2/3 sm:w-auto" data-i18n="btn_next">다음 단계로 🚀</button>
+            </div>
+        </section>
+
+        <!-- 5단계: 테스트 -->
+        <section id="step5" class="step-section hide bg-white rounded-3xl p-5 sm:p-8 shadow-md border-t-8 border-pastel-purple">
+            <h2 class="text-xl sm:text-2xl font-bold mb-2 flex items-center gap-2">
+                <span class="text-2xl sm:text-3xl">📝</span> <span data-i18n="step5_title">5단계: 사용해보고 평가하기</span>
+            </h2>
+            <p class="text-gray-600 mb-6 text-sm sm:text-base" data-i18n="step5_desc">만든 것을 테스트해보고, 좋았던 점과 아쉬운 점을 적어보세요.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- 좋았던 점 -->
+                <div>
+                    <h3 class="font-bold text-lg text-pink-600 flex items-center gap-1 mb-3"><span class="material-symbols-rounded">star</span> <span data-i18n="s5_good">좋았던 점</span></h3>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="s5-good-input" class="flex-grow p-3 rounded-xl bg-gray-100 border border-gray-200 outline-none text-sm sm:text-base" data-i18n-ph="s5_good_ph" onkeypress="if(event.key==='Enter') addFeedback('good')">
+                        <button onclick="addFeedback('good')" class="bg-pink-400 hover:bg-pink-500 text-white px-4 rounded-xl whitespace-nowrap text-sm sm:text-base" data-i18n="btn_add">추가</button>
+                    </div>
+                    <ul id="good-board" class="space-y-3"></ul>
+                </div>
+
+                <!-- 고칠 점 -->
+                <div>
+                    <h3 class="font-bold text-lg text-blue-600 flex items-center gap-1 mb-3"><span class="material-symbols-rounded">lightbulb</span> <span data-i18n="s5_bad">아쉬운 점 / 고칠 점</span></h3>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="s5-bad-input" class="flex-grow p-3 rounded-xl bg-gray-100 border border-gray-200 outline-none text-sm sm:text-base" data-i18n-ph="s5_bad_ph" onkeypress="if(event.key==='Enter') addFeedback('bad')">
+                        <button onclick="addFeedback('bad')" class="bg-blue-400 hover:bg-blue-500 text-white px-4 rounded-xl whitespace-nowrap text-sm sm:text-base" data-i18n="btn_add">추가</button>
+                    </div>
+                    <ul id="bad-board" class="space-y-3"></ul>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-between gap-4">
+                <button onclick="prevStep()" class="text-gray-500 hover:text-gray-700 font-bold py-3 px-6 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors w-1/3 sm:w-auto" data-i18n="btn_prev">이전</button>
+                <button onclick="nextStep()" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-transform hover:-translate-y-1 w-2/3 sm:w-auto" data-i18n="btn_result">결과 보기 🏆</button>
+            </div>
+        </section>
+
+        <!-- 결과 리포트 -->
+        <section id="step6" class="step-section hide">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                <h2 class="text-2xl font-bold flex items-center gap-2">
+                    <span class="text-3xl">🏆</span> <span data-i18n="step6_title">나만의 디자인 씽킹 리포트</span>
+                </h2>
+            </div>
+
+            <!-- 리포트 카드 (이 영역이 캡처됨) -->
+            <div id="reportCard" class="bg-white rounded-3xl p-5 sm:p-8 shadow-lg border border-gray-100 relative mb-8">
+                <div class="text-center mb-8 border-b pb-6">
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-2" data-i18n="report_title">디자인 씽킹 리포트</h1>
+                    <p class="text-gray-500 text-sm sm:text-base"><span data-i18n="app_title">쉽디</span> (Easy Design Thinking)</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+                    <div class="space-y-6">
+                        <div class="bg-pastel-pink bg-opacity-20 p-4 rounded-xl">
+                            <h3 class="font-bold text-pink-600 mb-2 text-sm sm:text-base">1. <span data-i18n="tab_1">공감</span></h3>
+                            <p class="text-sm"><strong>대상:</strong> <span id="r-who"></span></p>
+                            <p class="text-sm"><strong>상황/어려움:</strong> <span id="r-sit"></span></p>
+                            <p class="text-sm"><strong>감정:</strong> <span id="r-emo" class="text-xl"></span></p>
+                        </div>
+                        
+                        <div class="bg-pastel-yellow bg-opacity-30 p-4 rounded-xl">
+                            <h3 class="font-bold text-yellow-600 mb-2 text-sm sm:text-base">2. <span data-i18n="tab_2">문제정의</span></h3>
+                            <p class="text-sm font-medium">"우리가 어떻게 하면 <span id="r-d-who" class="text-blue-600 underline underline-offset-4 decoration-2"></span>가(이) <span id="r-d-goal" class="text-blue-600 underline underline-offset-4 decoration-2"></span> 할 수 있게 도울 수 있을까?"</p>
+                        </div>
+
+                        <div class="bg-pastel-green bg-opacity-20 p-4 rounded-xl">
+                            <h3 class="font-bold text-green-600 mb-2 text-sm sm:text-base">3. <span data-i18n="tab_3">아이디어</span></h3>
+                            <ul id="r-ideas" class="list-disc list-inside text-sm space-y-1 text-gray-700"></ul>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="bg-pastel-blue bg-opacity-20 p-4 rounded-xl">
+                            <h3 class="font-bold text-blue-600 mb-2 text-sm sm:text-base">4. <span data-i18n="tab_4">프로토타입</span></h3>
+                            <div class="mb-2 bg-white rounded border border-gray-200 overflow-hidden">
+                                <img id="r-canvas-img" src="" alt="스케치 없음" class="w-full h-auto object-contain bg-white hide">
+                                <p id="r-canvas-empty" class="text-gray-400 text-xs p-4 text-center" data-i18n="msg_no_img">그림이 없습니다.</p>
+                            </div>
+                            <p class="text-sm whitespace-pre-wrap"><span id="r-recipe"></span></p>
+                        </div>
+
+                        <div class="bg-pastel-purple bg-opacity-20 p-4 rounded-xl">
+                            <h3 class="font-bold text-purple-600 mb-2 text-sm sm:text-base">5. <span data-i18n="tab_5">테스트</span></h3>
+                            <div class="grid grid-cols-2 gap-2 text-xs sm:text-sm">
+                                <div>
+                                    <p class="font-bold text-pink-500 mb-1" data-i18n="s5_good">⭐ 좋았던 점</p>
+                                    <ul id="r-good" class="list-disc list-inside text-gray-700"></ul>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-blue-500 mb-1" data-i18n="s5_bad">💡 고칠 점</p>
+                                    <ul id="r-bad" class="list-disc list-inside text-gray-700"></ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 내보내기 버튼들 -->
+            <div class="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 flex-wrap">
+                <button onclick="exportTXT()" class="bg-gray-700 hover:bg-gray-800 text-white px-6 py-3 rounded-full font-bold shadow-md transition-transform hover:-translate-y-1 flex justify-center items-center gap-2 text-sm sm:text-base w-full sm:w-auto"><span class="material-symbols-rounded">description</span> <span data-i18n="btn_txt">TXT 저장</span></button>
+                <button onclick="exportImage()" class="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-full font-bold shadow-md transition-transform hover:-translate-y-1 flex justify-center items-center gap-2 text-sm sm:text-base w-full sm:w-auto"><span class="material-symbols-rounded">image</span> <span data-i18n="btn_img">이미지 저장</span></button>
+                <button onclick="exportPDF()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-full font-bold shadow-md transition-transform hover:-translate-y-1 flex justify-center items-center gap-2 text-sm sm:text-base w-full sm:w-auto"><span class="material-symbols-rounded">picture_as_pdf</span> <span data-i18n="btn_pdf">PDF 저장</span></button>
+            </div>
+
+            <div class="mt-8 flex justify-center">
+                <button onclick="resetApp()" class="text-gray-500 hover:text-red-500 underline text-sm transition-colors" data-i18n="btn_reset">새로운 프로젝트 시작하기 (초기화)</button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 스캠퍼 힌트 모달 -->
+    <div id="scamperModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hide px-4">
+        <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl transform transition-all">
+            <h3 class="text-xl sm:text-2xl font-bold text-yellow-500 mb-4 flex items-center gap-2"><span class="text-3xl">🧩</span> <span data-i18n="scamper_title">스캠퍼 아이디어 힌트</span></h3>
+            <ul class="space-y-4 text-sm sm:text-base text-gray-700">
+                <li class="flex gap-3"><span class="text-xl">➕</span> <div><strong data-i18n="sc_1_t">더하기:</strong> <span data-i18n="sc_1_d">새로운 기능이나 재료를 더해보면 어떨까?</span></div></li>
+                <li class="flex gap-3"><span class="text-xl">➖</span> <div><strong data-i18n="sc_2_t">빼기:</strong> <span data-i18n="sc_2_d">불필요하거나 불편한 것을 빼보면 어떨까?</span></div></li>
+                <li class="flex gap-3"><span class="text-xl">🔄</span> <div><strong data-i18n="sc_3_t">다르게 쓰기:</strong> <span data-i18n="sc_3_d">원래 용도 말고 다른 용도로 써보면 어떨까?</span></div></li>
+                <li class="flex gap-3"><span class="text-xl">🔀</span> <div><strong data-i18n="sc_4_t">바꾸기:</strong> <span data-i18n="sc_4_d">모양, 색깔, 순서를 다르게 바꿔보면 어떨까?</span></div></li>
+            </ul>
+            <button onclick="closeScamperHint()" class="mt-6 w-full bg-yellow-400 hover:bg-yellow-500 text-gray-800 font-bold py-3 rounded-xl" data-i18n="btn_ok">알겠어요!</button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-100 py-6 mt-auto">
+        <div class="text-center text-gray-500 text-xs sm:text-sm">
+            <p>Created by. 교육뮤지컬 꿈꾸는 치수쌤</p>
+            <a href="https://litt.ly/chichiboo" target="_blank" class="text-blue-400 hover:underline inline-flex items-center gap-1 mt-1">
+                <span class="material-symbols-rounded text-sm">link</span> litt.ly/chichiboo
+            </a>
+        </div>
+    </footer>
+
+    <!-- Logic Script -->
+    <script>
+        /* =========================================
+           i18n (다국어 지원 Dictionary)
+           ========================================= */
+        const dict = {
+            ko: {
+                app_title: "쉽디", tab_1: "공감", tab_2: "문제정의", tab_3: "아이디어", tab_4: "프로토타입", tab_5: "테스트", tab_6: "리포트",
+                step1_title: "1단계: 마음으로 공감하기", step1_desc: "마치 동화책의 주인공처럼, 도움이 필요한 친구의 이야기를 들려주세요.",
+                s1_q1: "누가 어려움을 겪고 있나요?", s1_p1: "예: 우리 반 친구들, 동네 길고양이, 할머니 등",
+                s1_q2: "어떤 상황에서 어떤 어려움이 있나요?", s1_p2: "예: 비 오는 날 우산을 쓰고 가방에서 물건을 꺼내기 힘들어요.",
+                s1_q3: "주인공의 기분은 어떨까요?", btn_next: "다음 단계로 🚀", btn_prev: "이전",
+                step2_title: "2단계: 진짜 문제 찾기", step2_desc: "해결해야 할 문제를 한 문장으로 멋지게 만들어봐요!",
+                s2_hmw_1: "\"우리가 어떻게 하면...\"", s2_hmw_2: "가(이)", s2_hmw_3: "도울 수 있을까?\"",
+                s2_p1: "누구(대상)", s2_p2: "무엇을 할 수 있게 (목표)", s2_notice: "* 1단계에서 적은 내용이 자동으로 불러와졌어요. 수정해도 좋아요!",
+                step3_title: "3단계: 아이디어 팡팡!", step3_desc: "엉뚱해도 괜찮아요! 포스트잇에 아이디어를 마음껏 붙여보세요.",
+                s3_input: "번뜩이는 아이디어를 적어보세요!", btn_add_idea: "붙이기 📝", btn_hint: "힌트",
+                step4_title: "4단계: 뚝딱뚝딱 만들기", step4_desc: "가장 좋은 아이디어를 골라 눈에 보이게 만들어봐요!",
+                s4_sketch: "🎨 아이디어 스케치", btn_clear: "전체 지우기", tool_pen: "펜", tool_eraser: "지우개", tool_text: "텍스트",
+                s4_recipe: "📋 만들기 레시피", s4_recipe_ph: "1. 준비물: 상자, 가위, 테이프\n2. 만드는 순서:\n - 첫째, 상자를 자른다.\n - 둘째, 테이프로 붙인다.",
+                step5_title: "5단계: 사용해보고 평가하기", step5_desc: "만든 것을 테스트해보고, 좋았던 점과 아쉬운 점을 적어보세요.",
+                s5_good: "⭐ 좋았던 점", s5_good_ph: "예: 사용하기 편리했다!", btn_add: "추가",
+                s5_bad: "💡 아쉬운 점 / 고칠 점", s5_bad_ph: "예: 튼튼하지 않아서 부서졌다.", btn_result: "결과 보기 🏆",
+                step6_title: "나만의 디자인 씽킹 리포트", report_title: "디자인 씽킹 리포트", msg_no_img: "그림이 없습니다.",
+                btn_txt: "TXT 저장", btn_img: "이미지 저장", btn_pdf: "PDF 저장", btn_reset: "새로운 프로젝트 시작하기 (초기화)",
+                scamper_title: "스캠퍼 아이디어 힌트", btn_ok: "알겠어요!",
+                sc_1_t: "더하기:", sc_1_d: "새로운 기능이나 재료를 더해보면 어떨까?",
+                sc_2_t: "빼기:", sc_2_d: "불필요하거나 불편한 것을 빼보면 어떨까?",
+                sc_3_t: "다르게 쓰기:", sc_3_d: "원래 용도 말고 다른 용도로 써보면 어떨까?",
+                sc_4_t: "바꾸기:", sc_4_d: "모양, 색깔, 순서를 다르게 바꿔보면 어떨까?",
+                alert_reset: "지금까지 작성한 모든 내용이 지워집니다. 새로 시작할까요?", alert_clear: "그림을 모두 지울까요?"
+            },
+            en: {
+                app_title: "Easy D", tab_1: "Empathize", tab_2: "Define", tab_3: "Ideate", tab_4: "Prototype", tab_5: "Test", tab_6: "Report",
+                step1_title: "Step 1: Empathize", step1_desc: "Tell a story about someone who needs help, like a character in a fairy tale.",
+                s1_q1: "Who is facing a difficulty?", s1_p1: "Ex: My classmates, stray cats, my grandma",
+                s1_q2: "In what situation are they struggling?", s1_p2: "Ex: It's hard to take things out of a bag while holding an umbrella in the rain.",
+                s1_q3: "How does the main character feel?", btn_next: "Next Step 🚀", btn_prev: "Previous",
+                step2_title: "Step 2: Define the Problem", step2_desc: "Let's make a great sentence about the problem we need to solve!",
+                s2_hmw_1: "\"How Might We...\"", s2_hmw_2: "so they can", s2_hmw_3: "?\"",
+                s2_p1: "Who (Target)", s2_p2: "What to achieve (Goal)", s2_notice: "* Info from Step 1 is loaded automatically. Feel free to edit!",
+                step3_title: "Step 3: Ideate!", step3_desc: "Crazy ideas are welcome! Put your ideas on sticky notes.",
+                s3_input: "Write down your brilliant idea!", btn_add_idea: "Post It 📝", btn_hint: "Hint",
+                step4_title: "Step 4: Prototype", step4_desc: "Pick the best idea and make it visible!",
+                s4_sketch: "🎨 Idea Sketch", btn_clear: "Clear All", tool_pen: "Pen", tool_eraser: "Eraser", tool_text: "Text",
+                s4_recipe: "📋 Making Recipe", s4_recipe_ph: "1. Materials: Box, Scissors, Tape\n2. Steps:\n - First, cut the box.\n - Second, tape it.",
+                step5_title: "Step 5: Test & Evaluate", step5_desc: "Test what you made and write down what was good and what could be improved.",
+                s5_good: "⭐ What worked well", s5_good_ph: "Ex: It was convenient to use!", btn_add: "Add",
+                s5_bad: "💡 What could be improved", s5_bad_ph: "Ex: It was fragile and broke.", btn_result: "View Result 🏆",
+                step6_title: "My Design Thinking Report", report_title: "Design Thinking Report", msg_no_img: "No drawing.",
+                btn_txt: "Save TXT", btn_img: "Save Image", btn_pdf: "Save PDF", btn_reset: "Start New Project (Reset)",
+                scamper_title: "SCAMPER Hints", btn_ok: "Got it!",
+                sc_1_t: "Substitute:", sc_1_d: "What if we add new features or materials?",
+                sc_2_t: "Eliminate:", sc_2_d: "What if we remove unnecessary or uncomfortable parts?",
+                sc_3_t: "Put to another use:", sc_3_d: "What if we use it for something else?",
+                sc_4_t: "Modify:", sc_4_d: "What if we change the shape, color, or order?",
+                alert_reset: "All your progress will be deleted. Are you sure you want to restart?", alert_clear: "Clear the entire canvas?"
+            }
+        };
+
+        const emotions24 = [
+            { emoji: '😌', ko: '평온해요', en: 'Calm', value: 'emo_1', color: 'bg-yellow-100', checked: 'peer-checked:bg-yellow-300', text: 'text-yellow-700' },
+            { emoji: '😊', ko: '기뻐요', en: 'Joyful', value: 'emo_2', color: 'bg-yellow-100', checked: 'peer-checked:bg-yellow-400', text: 'text-yellow-800' },
+            { emoji: '🤩', ko: '신나요', en: 'Excited', value: 'emo_3', color: 'bg-yellow-200', checked: 'peer-checked:bg-yellow-500', text: 'text-yellow-900' },
+            { emoji: '🙂', ko: '안심돼요', en: 'Relieved', value: 'emo_4', color: 'bg-lime-100', checked: 'peer-checked:bg-lime-300', text: 'text-lime-700' },
+            { emoji: '🤝', ko: '믿어요', en: 'Trusting', value: 'emo_5', color: 'bg-lime-100', checked: 'peer-checked:bg-lime-400', text: 'text-lime-800' },
+            { emoji: '🥰', ko: '감동했어요', en: 'Touched', value: 'emo_6', color: 'bg-lime-200', checked: 'peer-checked:bg-lime-500', text: 'text-lime-900' },
+            { emoji: '😟', ko: '걱정돼요', en: 'Worried', value: 'emo_7', color: 'bg-green-100', checked: 'peer-checked:bg-green-300', text: 'text-green-700' },
+            { emoji: '😨', ko: '무서워요', en: 'Scared', value: 'emo_8', color: 'bg-green-100', checked: 'peer-checked:bg-green-400', text: 'text-green-800' },
+            { emoji: '😱', ko: '공포스러워요', en: 'Terrified', value: 'emo_9', color: 'bg-green-200', checked: 'peer-checked:bg-green-500', text: 'text-green-900' },
+            { emoji: '🙄', ko: '신경쓰여요', en: 'Bothered', value: 'emo_10', color: 'bg-cyan-100', checked: 'peer-checked:bg-cyan-300', text: 'text-cyan-700' },
+            { emoji: '😲', ko: '놀라워요', en: 'Amazed', value: 'emo_11', color: 'bg-cyan-100', checked: 'peer-checked:bg-cyan-400', text: 'text-cyan-800' },
+            { emoji: '🤯', ko: '신기해요', en: 'Mind-blown', value: 'emo_12', color: 'bg-cyan-200', checked: 'peer-checked:bg-cyan-500', text: 'text-cyan-900' },
+            { emoji: '🥲', ko: '아쉬워요', en: 'Regretful', value: 'emo_13', color: 'bg-blue-100', checked: 'peer-checked:bg-blue-300', text: 'text-blue-700' },
+            { emoji: '😭', ko: '슬퍼요', en: 'Sad', value: 'emo_14', color: 'bg-blue-100', checked: 'peer-checked:bg-blue-400', text: 'text-blue-800' },
+            { emoji: '😞', ko: '우울해요', en: 'Depressed', value: 'emo_15', color: 'bg-blue-200', checked: 'peer-checked:bg-blue-500', text: 'text-blue-900' },
+            { emoji: '🥱', ko: '지루해요', en: 'Bored', value: 'emo_16', color: 'bg-purple-100', checked: 'peer-checked:bg-purple-300', text: 'text-purple-700' },
+            { emoji: '😒', ko: '싫어요', en: 'Dislike', value: 'emo_17', color: 'bg-purple-100', checked: 'peer-checked:bg-purple-400', text: 'text-purple-800' },
+            { emoji: '🤢', ko: '불쾌해요', en: 'Disgusted', value: 'emo_18', color: 'bg-purple-200', checked: 'peer-checked:bg-purple-500', text: 'text-purple-900' },
+            { emoji: '😤', ko: '짜증나요', en: 'Annoyed', value: 'emo_19', color: 'bg-red-100', checked: 'peer-checked:bg-red-300', text: 'text-red-700' },
+            { emoji: '😠', ko: '화나요', en: 'Angry', value: 'emo_20', color: 'bg-red-100', checked: 'peer-checked:bg-red-400', text: 'text-red-800' },
+            { emoji: '🤬', ko: '폭발할게요', en: 'Furious', value: 'emo_21', color: 'bg-red-200', checked: 'peer-checked:bg-red-500', text: 'text-red-900' },
+            { emoji: '🤔', ko: '관심있어요', en: 'Curious', value: 'emo_22', color: 'bg-orange-100', checked: 'peer-checked:bg-orange-300', text: 'text-orange-700' },
+            { emoji: '😆', ko: '기대돼요', en: 'Anticipating', value: 'emo_23', color: 'bg-orange-100', checked: 'peer-checked:bg-orange-400', text: 'text-orange-800' },
+            { emoji: '🧐', ko: '조심스러워요', en: 'Cautious', value: 'emo_24', color: 'bg-orange-200', checked: 'peer-checked:bg-orange-500', text: 'text-orange-900' }
+        ];
+
+        let lang = localStorage.getItem('edt_lang') || 'ko';
+        const t = (key) => dict[lang][key] || key;
+
+        function applyI18n() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                el.innerText = t(el.getAttribute('data-i18n'));
+            });
+            document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+                el.placeholder = t(el.getAttribute('data-i18n-ph'));
+            });
+            document.getElementById('langBtnPC').innerText = lang === 'ko' ? 'English' : '한국어';
+            document.getElementById('langBtnMobile').innerText = lang === 'ko' ? 'EN' : 'KO';
+            renderEmotions();
+            renderStep();
+        }
+
+        function toggleLanguage() {
+            lang = lang === 'ko' ? 'en' : 'ko';
+            localStorage.setItem('edt_lang', lang);
+            applyI18n();
+        }
+
+        /* =========================================
+           State Management
+           ========================================= */
+        const STORAGE_KEY = 'easy_design_thinking_v2';
+        let state = {
+            currentStep: 1,
+            step1: { who: '', situation: '', emotion: '' },
+            step2: { who: '', goal: '' },
+            step3: { ideas: [] },
+            step4: { canvasImg: '', recipe: '' },
+            step5: { good: [], bad: [] }
+        };
+
+        const stepsInfo = [
+            { id: 1, key: 'tab_1', color: 'bg-pastel-pink text-pink-700' },
+            { id: 2, key: 'tab_2', color: 'bg-pastel-yellow text-yellow-700' },
+            { id: 3, key: 'tab_3', color: 'bg-pastel-green text-green-700' },
+            { id: 4, key: 'tab_4', color: 'bg-pastel-blue text-blue-700' },
+            { id: 5, key: 'tab_5', color: 'bg-pastel-purple text-purple-700' },
+            { id: 6, key: 'tab_6', color: 'bg-gray-200 text-gray-700' },
+        ];
+
+        window.onload = () => {
+            loadState();
+            applyI18n();
+            initUI();
+            initCanvas();
+            renderStep();
+            
+            document.querySelectorAll('input:not(#canvasTextInput), textarea').forEach(el => {
+                el.addEventListener('input', debounce(saveDataFromUI, 500));
+            });
+        };
+
+        function loadState() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) { try { state = JSON.parse(saved); } catch(e) {} }
+        }
+        function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+        function debounce(func, wait) { let timeout; return function() { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, arguments), wait); }; }
+
+        /* =========================================
+           UI Sync
+           ========================================= */
+        function renderEmotions() {
+            const container = document.getElementById('emotion-container');
+            container.innerHTML = emotions24.map(emo => `
+                <label class="cursor-pointer h-full">
+                    <input type="radio" name="emotion" value="${emo.value}" class="peer sr-only" ${state.step1.emotion === emo.value ? 'checked' : ''} onchange="saveDataFromUI()">
+                    <div class="p-2 sm:p-3 rounded-2xl ${emo.color} ${emo.checked} peer-checked:scale-105 peer-checked:shadow-md transition-all text-center h-full flex flex-col justify-center items-center border-2 border-transparent peer-checked:border-gray-400 select-none">
+                        <div class="text-2xl sm:text-3xl mb-1">${emo.emoji}</div>
+                        <div class="font-bold text-[10px] sm:text-xs ${emo.text} break-keep leading-tight">${emo[lang]}</div>
+                    </div>
+                </label>
+            `).join('');
+        }
+
+        function initUI() {
+            document.getElementById('s1-who').value = state.step1.who;
+            document.getElementById('s1-situation').value = state.step1.situation;
+            document.getElementById('s2-who').value = state.step2.who;
+            document.getElementById('s2-goal').value = state.step2.goal;
+            document.getElementById('s4-recipe').value = state.step4.recipe;
+            renderIdeas();
+            renderFeedbacks();
+        }
+
+        function saveDataFromUI() {
+            state.step1.who = document.getElementById('s1-who').value;
+            state.step1.situation = document.getElementById('s1-situation').value;
+            const emoNode = document.querySelector('input[name="emotion"]:checked');
+            state.step1.emotion = emoNode ? emoNode.value : '';
+            state.step2.who = document.getElementById('s2-who').value;
+            state.step2.goal = document.getElementById('s2-goal').value;
+            state.step4.recipe = document.getElementById('s4-recipe').value;
+            saveState();
+        }
+
+        /* =========================================
+           Navigation
+           ========================================= */
+        function renderStep() {
+            document.getElementById('progressTabs').innerHTML = stepsInfo.map(info => `
+                <button onclick="goToStep(${info.id})" class="flex-shrink-0 px-3 py-1.5 rounded-full text-xs sm:text-sm font-bold transition-colors ${state.currentStep === info.id ? info.color + ' ring-2 ring-offset-1 ring-gray-300' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-700'}">
+                    ${info.id}. ${t(info.key)}
+                </button>
+            `).join('');
+
+            document.querySelectorAll('.step-section').forEach(el => el.classList.add('hide'));
+            document.getElementById('step' + state.currentStep).classList.remove('hide');
+
+            if (state.currentStep === 2 && !document.getElementById('s2-who').value && state.step1.who) {
+                document.getElementById('s2-who').value = state.step1.who;
+                state.step2.who = state.step1.who;
+                saveState();
+            } else if (state.currentStep === 4) {
+                setTimeout(setupCanvas, 100);
+            } else if (state.currentStep === 6) {
+                generateReport();
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function goToStep(id) { saveDataFromUI(); state.currentStep = id; saveState(); renderStep(); }
+        function nextStep() { if (state.currentStep < 6) goToStep(state.currentStep + 1); }
+        function prevStep() { if (state.currentStep > 1) goToStep(state.currentStep - 1); }
+
+        function resetApp() {
+            if(confirm(t('alert_reset'))) {
+                localStorage.removeItem(STORAGE_KEY);
+                location.reload();
+            }
+        }
+
+        /* =========================================
+           Step 3 & 5: Post-its
+           ========================================= */
+        function addIdea() {
+            const val = document.getElementById('s3-input').value.trim();
+            if(val) { state.step3.ideas.push(val); document.getElementById('s3-input').value = ''; saveState(); renderIdeas(); }
+        }
+        function removeIdea(index) { state.step3.ideas.splice(index, 1); saveState(); renderIdeas(); }
+        function renderIdeas() {
+            document.getElementById('idea-board').innerHTML = state.step3.ideas.map((idea, i) => `
+                <div class="post-it bg-pastel-yellow p-3 sm:p-4 rounded-sm relative aspect-square flex items-center justify-center text-center text-sm sm:text-base">
+                    <button onclick="removeIdea(${i})" class="absolute top-1 right-1 text-gray-400 hover:text-red-500 p-1"><span class="material-symbols-rounded text-sm sm:text-base">close</span></button>
+                    <p class="font-medium break-keep">${idea}</p>
+                </div>
+            `).join('');
+        }
+        function showScamperHint() { document.getElementById('scamperModal').classList.remove('hide'); }
+        function closeScamperHint() { document.getElementById('scamperModal').classList.add('hide'); }
+
+        function addFeedback(type) {
+            const input = document.getElementById(type === 'good' ? 's5-good-input' : 's5-bad-input');
+            const val = input.value.trim();
+            if(val) { state.step5[type].push(val); input.value = ''; saveState(); renderFeedbacks(); }
+        }
+        function removeFeedback(type, index) { state.step5[type].splice(index, 1); saveState(); renderFeedbacks(); }
+        function renderFeedbacks() {
+            const makeHtml = (arr, type, bg) => arr.map((t, i) => `
+                <li class="post-it ${bg} bg-opacity-50 p-3 rounded shadow-sm relative pr-8 text-sm sm:text-base">
+                    <span class="break-words">${t}</span>
+                    <button onclick="removeFeedback('${type}', ${i})" class="absolute top-2 right-2 text-gray-500"><span class="material-symbols-rounded text-sm">close</span></button>
+                </li>`).join('');
+            document.getElementById('good-board').innerHTML = makeHtml(state.step5.good, 'good', 'bg-pastel-pink');
+            document.getElementById('bad-board').innerHTML = makeHtml(state.step5.bad, 'bad', 'bg-pastel-blue');
+        }
+
+        /* =========================================
+           Step 4: Advanced Canvas Engine
+           ========================================= */
+        let canvas, ctx;
+        let isDrawing = false;
+        let lastPos = {x: 0, y: 0};
+        let currentTool = 'pen'; // pen, eraser, text
+        const textInput = document.getElementById('canvasTextInput');
+
+        function initCanvas() {
+            canvas = document.getElementById('protoCanvas');
+            ctx = canvas.getContext('2d', { willReadFrequently: true });
+            window.addEventListener('resize', debounce(setupCanvas, 200));
+
+            const startInteraction = (e) => {
+                if(currentTool === 'text') {
+                    placeTextInput(e);
+                    return;
+                }
+                isDrawing = true;
+                const pos = getMousePos(e);
+                lastPos = pos;
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+                ctx.lineTo(pos.x, pos.y); // 점찍기
+                applyBrushStyle();
+                ctx.stroke();
+                if(e.touches) e.preventDefault(); // 모바일 스크롤 방지
+            };
+
+            const draw = (e) => {
+                if (!isDrawing || currentTool === 'text') return;
+                const pos = getMousePos(e);
+                
+                // 자연스러운 곡선을 위해 Quadratic Curve 사용
+                const midX = lastPos.x + (pos.x - lastPos.x) / 2;
+                const midY = lastPos.y + (pos.y - lastPos.y) / 2;
+                
+                ctx.quadraticCurveTo(lastPos.x, lastPos.y, midX, midY);
+                ctx.stroke();
+                lastPos = pos;
+                if(e.touches) e.preventDefault();
+            };
+
+            const endInteraction = () => {
+                if(isDrawing) {
+                    ctx.lineTo(lastPos.x, lastPos.y);
+                    ctx.stroke();
+                    isDrawing = false;
+                    ctx.closePath();
+                    saveCanvasToState();
+                }
+            };
+
+            canvas.addEventListener('mousedown', startInteraction);
+            canvas.addEventListener('mousemove', draw);
+            window.addEventListener('mouseup', endInteraction);
+            // 캔버스 밖으로 나갈 때
+            canvas.addEventListener('mouseleave', endInteraction);
+            
+            canvas.addEventListener('touchstart', startInteraction, {passive: false});
+            canvas.addEventListener('touchmove', draw, {passive: false});
+            canvas.addEventListener('touchend', endInteraction);
+            canvas.addEventListener('touchcancel', endInteraction);
+
+            // 텍스트 입력 처리
+            textInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') commitText(); });
+            textInput.addEventListener('blur', commitText);
+        }
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.classList.remove('tool-active'); btn.classList.add('tool-inactive');
+            });
+            document.getElementById(`tool-${tool}`).classList.add('tool-active');
+            
+            if(tool === 'text') {
+                canvas.style.cursor = 'text';
+            } else {
+                canvas.style.cursor = 'crosshair';
+                commitText(); // 다른 툴 선택 시 열려있던 텍스트 박스 커밋
+            }
+        }
+
+        function applyBrushStyle() {
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = document.getElementById('brushSize').value;
+            if(currentTool === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out';
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = document.getElementById('brushColor').value;
+            }
+        }
+        function updateBrush() { applyBrushStyle(); }
+
+        // 텍스트 툴 로직
+        let textPos = {x:0, y:0};
+        function placeTextInput(e) {
+            const pos = getMousePos(e);
+            textPos = pos;
+            textInput.value = '';
+            textInput.style.left = pos.x + 'px';
+            textInput.style.top = pos.y + 'px';
+            textInput.style.color = document.getElementById('brushColor').value;
+            textInput.style.fontSize = (parseInt(document.getElementById('brushSize').value) + 12) + 'px';
+            textInput.classList.remove('hide');
+            setTimeout(() => textInput.focus(), 50);
+        }
+
+        function commitText() {
+            if(textInput.classList.contains('hide')) return;
+            const val = textInput.value.trim();
+            if(val) {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = textInput.style.color;
+                ctx.font = `bold ${textInput.style.fontSize} Pretendard, sans-serif`;
+                ctx.textBaseline = 'top';
+                ctx.fillText(val, textPos.x + 2, textPos.y + 2); // Input 패딩 보정
+                saveCanvasToState();
+            }
+            textInput.classList.add('hide');
+            textInput.value = '';
+        }
+
+        function setupCanvas() {
+            if (!canvas || canvas.parentElement.clientWidth === 0) return;
+            const parent = canvas.parentElement;
+            
+            // 기존 그림 백업
+            const tempImg = state.step4.canvasImg;
+            
+            canvas.width = parent.clientWidth;
+            // Tailwind CSS의 sm 기준(640px) 확인하여 높이 유동적 적용
+            canvas.height = window.innerWidth >= 640 ? 400 : 300; 
+
+            // 초기화 후 복원
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            if(tempImg) {
+                let img = new Image();
+                img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                img.src = tempImg;
+            }
+        }
+
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX = evt.clientX; let clientY = evt.clientY;
+            if(evt.touches && evt.touches.length > 0) {
+                clientX = evt.touches[0].clientX; clientY = evt.touches[0].clientY;
+            }
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function clearCanvas() {
+            if(confirm(t('alert_clear'))) {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                state.step4.canvasImg = '';
+                saveState();
+            }
+        }
+
+        function saveCanvasToState() {
+            // 투명 배경(지우개 자국)을 흰색으로 변경 후 저장하기 위해 임시 캔버스 활용
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
+            const tCtx = tempCanvas.getContext('2d');
+            tCtx.fillStyle = '#ffffff';
+            tCtx.fillRect(0,0, tempCanvas.width, tempCanvas.height);
+            tCtx.drawImage(canvas, 0, 0);
+            
+            state.step4.canvasImg = tempCanvas.toDataURL('image/png');
+            saveState();
+        }
+
+
+        /* =========================================
+           Report & Export
+           ========================================= */
+        function generateReport() {
+            // S1
+            document.getElementById('r-who').textContent = state.step1.who || '-';
+            document.getElementById('r-sit').textContent = state.step1.situation || '-';
+            const emoObj = emotions24.find(e => e.value === state.step1.emotion);
+            document.getElementById('r-emo').innerHTML = emoObj ? `${emoObj.emoji} <span class="text-sm font-bold text-gray-700">${emoObj[lang]}</span>` : '-';
+            
+            // S2
+            document.getElementById('r-d-who').textContent = state.step2.who || '(  )';
+            document.getElementById('r-d-goal').textContent = state.step2.goal || '(  )';
+            
+            // S3
+            document.getElementById('r-ideas').innerHTML = state.step3.ideas.length > 0 
+                ? state.step3.ideas.map(i => `<li>${i}</li>`).join('') : '<li>-</li>';
+            
+            // S4
+            const imgEl = document.getElementById('r-canvas-img');
+            const emptyEl = document.getElementById('r-canvas-empty');
+            if(state.step4.canvasImg) {
+                imgEl.src = state.step4.canvasImg;
+                imgEl.classList.remove('hide'); emptyEl.classList.add('hide');
+            } else {
+                imgEl.classList.add('hide'); emptyEl.classList.remove('hide');
+            }
+            document.getElementById('r-recipe').textContent = state.step4.recipe || '-';
+            
+            // S5
+            document.getElementById('r-good').innerHTML = state.step5.good.length > 0 
+                ? state.step5.good.map(i => `<li>${i}</li>`).join('') : '<li>-</li>';
+            document.getElementById('r-bad').innerHTML = state.step5.bad.length > 0 
+                ? state.step5.bad.map(i => `<li>${i}</li>`).join('') : '<li>-</li>';
+        }
+
+        function exportTXT() {
+            let content = `=== ${t('app_title')} Report ===\n\n`;
+            content += `[1. ${t('tab_1')}]\n- Who: ${state.step1.who}\n- Situation: ${state.step1.situation}\n\n`;
+            content += `[2. ${t('tab_2')}]\nHow might we help [${state.step2.who}] to [${state.step2.goal}]?\n\n`;
+            content += `[3. ${t('tab_3')}]\n` + state.step3.ideas.map(i=>`- ${i}`).join('\n') + `\n\n`;
+            content += `[4. ${t('tab_4')} (Recipe)]\n${state.step4.recipe}\n\n`;
+            content += `[5. ${t('tab_5')}]\nGood: ` + state.step5.good.join(', ') + `\nImprove: ` + state.step5.bad.join(', ') + `\n`;
+
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'DesignThinking_Report.txt';
+            a.click(); URL.revokeObjectURL(url);
+        }
+
+        async function exportImage() {
+            const card = document.getElementById('reportCard');
+            const originalStyle = card.style.transform;
+            card.style.transform = 'none'; 
+            try {
+                const canvas = await html2canvas(card, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+                const url = canvas.toDataURL('image/png');
+                const a = document.createElement('a');
+                a.href = url; a.download = 'DesignThinking_Report.png'; a.click();
+            } catch (err) { alert('Error saving image.'); }
+            finally { card.style.transform = originalStyle; }
+        }
+
+        async function exportPDF() {
+            const card = document.getElementById('reportCard');
+            card.style.transform = 'none';
+            try {
+                const canvas = await html2canvas(card, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save('DesignThinking_Report.pdf');
+            } catch (err) { alert('Error saving PDF.'); }
+            finally { card.style.transform = originalStyle; }
+        }
+    </script>
+</body>
+</html>
